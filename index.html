@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de Tempos - Natação</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f8ff;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #0066cc;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .search-box {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #e6f2ff;
+            border-radius: 5px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .search-box input {
+            padding: 8px;
+            width: 200px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        
+        .search-box button {
+            padding: 8px 15px;
+            background: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .search-box button:hover {
+            background: #0052a3;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background-color: #0066cc;
+            color: white;
+            position: sticky;
+            top: 0;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f2f9ff;
+        }
+        
+        tr:hover {
+            background-color: #e6f2ff;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .highlight {
+            background-color: #fffacd;
+            font-weight: bold;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0,0,0,.3);
+            border-radius: 50%;
+            border-top-color: #0066cc;
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Consulta de Tempos - Natação</h1>
+        
+        <div class="search-box">
+            <input type="number" id="swimmerId" placeholder="Digite o ID do atleta">
+            <button id="searchBtn">Buscar</button>
+            <button id="showAllBtn">Mostrar Todos</button>
+            <span id="loading" class="loading" style="display: none;"></span>
+        </div>
+        
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nome do Atleta</th>
+                        <th>50m Livre</th>
+                        <th>100m Livre</th>
+                        <th>200m Livre</th>
+                        <th>Melhor Tempo</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsTable">
+                    <tr>
+                        <td colspan="6" class="no-results">Digite um ID e clique em Buscar ou clique em Mostrar Todos</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // URL da sua API (substitua pela URL real do seu backend)
+        const API_URL = 'https://sua-api-de-natacao.com/times';
+        
+        // Elementos do DOM
+        const searchBtn = document.getElementById('searchBtn');
+        const showAllBtn = document.getElementById('showAllBtn');
+        const swimmerIdInput = document.getElementById('swimmerId');
+        const resultsTable = document.getElementById('resultsTable');
+        const loadingIndicator = document.getElementById('loading');
+        
+        // Função para mostrar/ocultar o loading
+        function showLoading(show) {
+            loadingIndicator.style.display = show ? 'inline-block' : 'none';
+        }
+        
+        // Função para buscar dados da API
+        async function fetchSwimmerData(endpoint = '') {
+            showLoading(true);
+            try {
+                const response = await fetch(`${API_URL}${endpoint}`);
+                if (!response.ok) {
+                    throw new Error(`Erro HTTP: ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Erro ao buscar dados:', error);
+                alert('Erro ao buscar dados. Verifique o console para detalhes.');
+                return null;
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        // Função para formatar o tempo
+        function formatTime(seconds) {
+            if (!seconds) return '-';
+            if (seconds < 60) return `${seconds.toFixed(2)}s`;
+            
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = (seconds % 60).toFixed(2);
+            return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+        }
+        
+        // Função para calcular o melhor tempo
+        function getBestTime(swimmer) {
+            const times = [
+                swimmer.time50m, 
+                swimmer.time100m, 
+                swimmer.time200m
+            ].filter(t => t);
+            
+            if (times.length === 0) return '-';
+            
+            const minTime = Math.min(...times);
+            return formatTime(minTime);
+        }
+        
+        // Função para renderizar os resultados na tabela
+        function renderResults(data, highlightId = null) {
+            if (!data || data.length === 0) {
+                resultsTable.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="no-results">Nenhum resultado encontrado</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            let html = '';
+            data.forEach(swimmer => {
+                const isHighlighted = highlightId && swimmer.id == highlightId;
+                
+                html += `
+                    <tr ${isHighlighted ? 'class="highlight"' : ''}>
+                        <td>${swimmer.id}</td>
+                        <td>${swimmer.name || '-'}</td>
+                        <td>${swimmer.time50m ? formatTime(swimmer.time50m) : '-'}</td>
+                        <td>${swimmer.time100m ? formatTime(swimmer.time100m) : '-'}</td>
+                        <td>${swimmer.time200m ? formatTime(swimmer.time200m) : '-'}</td>
+                        <td>${getBestTime(swimmer)}</td>
+                    </tr>
+                `;
+            });
+            
+            resultsTable.innerHTML = html;
+        }
+        
+        // Evento de busca por ID
+        searchBtn.addEventListener('click', async function() {
+            const swimmerId = swimmerIdInput.value.trim();
+            
+            if (!swimmerId) {
+                alert('Por favor, digite um ID válido');
+                return;
+            }
+            
+            const data = await fetchSwimmerData(`/${swimmerId}`);
+            if (data) {
+                renderResults(Array.isArray(data) ? data : [data], swimmerId);
+            }
+        });
+        
+        // Evento para mostrar todos
+        showAllBtn.addEventListener('click', async function() {
+            const data = await fetchSwimmerData();
+            if (data) {
+                renderResults(data);
+            }
+        });
+        
+        // Permitir busca ao pressionar Enter
+        swimmerIdInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchBtn.click();
+            }
+        });
+        
+        // Exemplo de dados mockados para demonstração (remova em produção)
+        async function mockApiResponse(url) {
+            await new Promise(resolve => setTimeout(resolve, 800)); // Simula delay de rede
+            
+            const mockData = [
+                { id: 1, name: 'Carlos Silva', time50m: 22.45, time100m: 49.78, time200m: 108.32 },
+                { id: 2, name: 'Ana Oliveira', time50m: 24.78, time100m: 53.45, time200m: 112.67 },
+                { id: 3, name: 'Pedro Santos', time50m: 23.12, time100m: 50.89, time200m: 109.45 },
+                { id: 4, name: 'Mariana Costa', time50m: 25.34, time100m: 54.12, time200m: 115.78 },
+                { id: 5, name: 'Lucas Pereira', time50m: 21.89, time100m: 48.56, time200m: 106.89 }
+            ];
+            
+            if (url.includes('/')) {
+                const id = url.split('/').pop();
+                const swimmer = mockData.find(item => item.id == id);
+                return swimmer ? [swimmer] : [];
+            }
+            
+            return mockData;
+        }
+        
+        // Simulação da API (remova em produção e descomente a fetchSwimmerData real)
+        window.fetch = async function(url) {
+            if (url.startsWith(API_URL)) {
+                const data = await mockApiResponse(url.replace(API_URL, ''));
+                return {
+                    ok: true,
+                    json: () => Promise.resolve(data)
+                };
+            }
+            return fetch.apply(this, arguments);
+        };
+    </script>
+</body>
+</html>
