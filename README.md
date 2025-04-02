@@ -1,1 +1,6 @@
-# natacao
+# Desenvolvimento de um Cronômetro para Natação com Sensor Piezoelétrico e Conectividade Wi-Fi
+A cronometragem precisa é um fator essencial em competições de natação, pois até frações de segundo podem determinar o vencedor de uma prova. Tradicionalmente, os tempos são registrados manualmente por árbitros ou com sistemas eletrônicos avançados, que podem ser caros e de difícil acesso. Com o avanço da tecnologia e a crescente acessibilidade de microcontroladores e sensores, é possível desenvolver soluções mais acessíveis e eficientes para registrar automaticamente os tempos dos nadadores.
+
+Este projeto tem como objetivo criar um sistema de cronometragem automatizado para natação utilizando um sensor piezoelétrico. Esse sensor é capaz de detectar o toque do atleta na borda da piscina e, por meio de um microcontrolador ESP com conectividade Wi-Fi, enviar os dados para um banco de dados na nuvem, especificamente o Supabase. Os dados coletados são posteriormente consumidos e exibidos em uma interface web desenvolvida com HTML, CSS e JavaScript.
+
+O desenvolvimento desse sistema busca não apenas melhorar a precisão na medição dos tempos, mas também oferecer uma solução de fácil implementação e baixo custo, que pode ser utilizada tanto em treinamentos quanto em competições.
